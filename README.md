@@ -21,8 +21,8 @@ Install once per machine. Works from every project directory afterwards.
 | Piece | What it is |
 |---|---|
 | **The skill** (`SKILL.md`) | Instructions Claude loads when a Google Sheet comes up. Holds the working procedure and the safety rules. |
-| **The library** (`sheets.py`) | ~80 lines over [`gspread`](https://docs.gspread.org/). Also a CLI. This is what actually talks to Google. |
-| **The MCP server** (`server.py`) | Exposes the library as six tools to Claude sessions that prefer tools over shell commands. Optional. |
+| **The library** (`sheets.py`) | ~190 lines over [`gspread`](https://docs.gspread.org/). Also a CLI. This is what actually talks to Google. |
+| **The MCP server** (`server.py`) | Exposes the library as eight tools to Claude sessions that prefer tools over shell commands. Optional. |
 | **The installer** (`install.sh`) | Puts everything in the right place on a new machine. |
 
 The skill is the instructions; the library is the hands. You need both, and
@@ -48,6 +48,7 @@ cd gsheets-skill
 | **Write** | "Set the Q3 row's status to Approved" |
 | **Append** | "Add a row for the migration project" |
 | **Format** | "Make the header bold and show column B as currency" |
+| **Highlight** | "Freeze the header row and turn negative amounts red" |
 | **Bulk edit** | "Apply all 24 changes in this document to the sheet" |
 
 Give Claude the sheet **URL or ID** and describe the change in normal language. The
@@ -108,8 +109,41 @@ Formats persist through later value writes, so you format a sheet once and every
 subsequent edit stays styled. Keep currency cells as plain numbers — the format does
 the rendering.
 
-**Still not supported:** conditional formatting, data validation and dropdowns, charts,
-named ranges, frozen rows, column widths, protected ranges.
+## Frozen headers and conditional formatting
+
+Freeze the top row so headers stay put while scrolling:
+
+```bash
+"$P" "$S" freeze <sheet_id> "Summary" 1        # rows; optional 4th arg = columns
+```
+
+Colour cells by what's in them — negatives red, overdue rows amber, over-budget rows
+flagged against another column:
+
+```bash
+"$P" "$S" conditional <sheet_id> '[
+  {"tab":"Summary","a1":"C2:C99",
+   "condition":{"type":"NUMBER_LESS","values":[{"userEnteredValue":"0"}]},
+   "format":{"backgroundColor":{"red":1,"green":0.8,"blue":0.8},"textFormat":{"bold":true}}},
+  {"tab":"Summary","a1":"A2:A99",
+   "condition":{"type":"CUSTOM_FORMULA","values":[{"userEnteredValue":"=$C2>$B2"}]},
+   "format":{"backgroundColor":{"red":1,"green":0.95,"blue":0.8}}}
+]'
+```
+
+Any Sheets
+[BooleanCondition](https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/other#booleancondition)
+works — `NUMBER_LESS`, `NUMBER_BETWEEN`, `TEXT_EQ`, `TEXT_CONTAINS`, `DATE_BEFORE`,
+`BLANK`, and `CUSTOM_FORMULA` for anything else. In a custom formula, use the range's
+**first** row number (`$C2` for a range starting at row 2); Sheets applies it relative
+to each row from there.
+
+**Rules stack.** Running the same call twice gives you two identical rules. Add
+`replace` to clear existing rules on the touched tabs first — handy when iterating on a
+sheet's styling, but it also removes rules you created by hand.
+
+**Still not supported:** data validation and dropdowns, charts, named ranges, column
+widths, protected ranges.
 
 ## Scope and limits
 
@@ -119,7 +153,9 @@ account. The trade-offs that follow from it:
 
 - **Sheets are addressed by ID.** It can't search your Drive by name — give it the URL.
 - **New sheets land in My Drive root.** It can't file them into a folder; move them yourself.
-- **It cannot delete, rename, or share anything.** No destructive operations exist in the API surface.
+- **It cannot delete or rename files, tabs, or rows, and cannot share anything.** The only
+  destructive operation anywhere is `conditional --replace`, which clears conditional-format
+  rules on the tabs it touches. Nothing can remove data.
 
 Two more limits worth knowing:
 
@@ -168,7 +204,7 @@ project's `.mcp.json` (expand `~` to your real home path — `.mcp.json` won't):
 ```
 
 Tools: `sheets_create`, `sheets_tabs`, `sheets_read`, `sheets_write`, `sheets_append`,
-`sheets_format`.
+`sheets_format`, `sheets_freeze`, `sheets_conditional`.
 Restart the session to pick it up. The skill works fine without this.
 
 ## Self-check
@@ -178,7 +214,8 @@ Restart the session to pick it up. The skill works fine without this.
 ```
 
 Runs offline against a fake sheet — no network, no credentials needed. Covers row
-numbering, per-tab batching, and that a bad tab name aborts before anything is written.
+numbering, per-tab batching, A1→GridRange conversion, the back-to-front rule deletes,
+and that a bad tab name aborts before anything is written.
 
 ## A note on what's not in this repo
 

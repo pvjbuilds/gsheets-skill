@@ -59,6 +59,27 @@ def sheets_format(sheet_id: str, formats: list[dict]) -> dict:
     return sheets.format_cells(sheet_id, formats)
 
 
+@mcp.tool(
+    description="Freeze header rows and/or leading columns so they stay visible "
+    "while scrolling. Defaults to freezing the first row."
+)
+def sheets_freeze(sheet_id: str, tab: str, rows: int = 1, cols: int = 0) -> dict:
+    return sheets.freeze(sheet_id, tab, rows, cols)
+
+
+@mcp.tool(
+    description="Add conditional-format rules — colour cells based on their contents. "
+    "rules is a list of {tab, a1, condition, format}, where condition is a Sheets "
+    "BooleanCondition, e.g. {'type':'NUMBER_LESS','values':[{'userEnteredValue':'0'}]} "
+    "or {'type':'CUSTOM_FORMULA','values':[{'userEnteredValue':'=$C2>$B2'}]}. "
+    "Pass replace=true to clear existing rules on those tabs first — otherwise "
+    "re-running stacks duplicates."
+)
+def sheets_conditional(sheet_id: str, rules: list[dict],
+                       replace: bool = False) -> dict:
+    return sheets.conditional(sheet_id, rules, replace)
+
+
 @mcp.tool(description="Append rows below the last non-empty row of a tab.")
 def sheets_append(sheet_id: str, tab: str, rows: list[list[str]]) -> dict:
     return sheets.append(sheet_id, tab, rows)

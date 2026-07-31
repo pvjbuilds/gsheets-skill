@@ -5,8 +5,8 @@ import sheets
 
 
 class FakeWS:
-    def __init__(self, title, grid):
-        self.title, self.grid = title, grid
+    def __init__(self, title, grid, sheet_id=0):
+        self.title, self.grid, self.id = title, grid, sheet_id
         self.batches, self.appended, self.formats = [], [], []
         self.row_count, self.col_count = len(grid), 8
 
@@ -29,14 +29,24 @@ class FakeWS:
 
 
 class FakeSheet:
-    def __init__(self, ws):
+    def __init__(self, ws, existing_rules=0):
         self.ws = {w.title: w for w in ws}
+        self.requests, self.existing_rules = [], existing_rules
 
     def worksheets(self):
         return list(self.ws.values())
 
     def worksheet(self, t):
         return self.ws[t]
+
+    def batch_update(self, body):
+        self.requests.extend(body["requests"])
+
+    def fetch_sheet_metadata(self):
+        return {"sheets": [
+            {"properties": {"sheetId": w.id},
+             "conditionalFormats": [{}] * self.existing_rules}
+            for w in self.ws.values()]}
 
 
 def fake(sheet):
@@ -95,6 +105,41 @@ def demo():
     except ValueError:
         pass
     assert log.formats == [], "partial format leaked before validation"
+
+    # conditional: A1 -> 0-indexed GridRange carrying the right numeric sheetId
+    red = {"backgroundColor": {"red": 1, "green": 0.8, "blue": 0.8}}
+    neg = {"type": "NUMBER_LESS", "values": [{"userEnteredValue": "0"}]}
+    sheet = FakeSheet([dash, FakeWS("Log", log.grid, sheet_id=77)])
+    fake(sheet)
+    r = sheets.conditional("id", [{"tab": "Log", "a1": "B2:B99",
+                                   "condition": neg, "format": red}])
+    assert r == {"rules_added": 1, "replaced": False, "tabs": ["Log"]}
+    rule = sheet.requests[0]["addConditionalFormatRule"]["rule"]
+    assert rule["ranges"] == [{"startRowIndex": 1, "endRowIndex": 99,
+                               "startColumnIndex": 1, "endColumnIndex": 2,
+                               "sheetId": 77}], rule["ranges"]
+    assert rule["booleanRule"] == {"condition": neg, "format": red}
+
+    # replace=True deletes existing rules back-to-front (each delete renumbers
+    # the ones after it, so ascending order would drop the wrong rules)
+    sheet = FakeSheet([FakeWS("Log", log.grid, sheet_id=77)], existing_rules=3)
+    fake(sheet)
+    sheets.conditional("id", [{"tab": "Log", "a1": "B2:B99",
+                               "condition": neg, "format": red}], replace=True)
+    deletes = [q["deleteConditionalFormatRule"]["index"]
+               for q in sheet.requests if "deleteConditionalFormatRule" in q]
+    assert deletes == [2, 1, 0], deletes
+    assert "addConditionalFormatRule" in sheet.requests[-1]
+
+    sheet = FakeSheet([FakeWS("Log", log.grid, sheet_id=77)])
+    fake(sheet)
+    try:
+        sheets.conditional("id", [{"tab": "Lgo", "a1": "A1",
+                                   "condition": neg, "format": red}])
+        raise SystemExit("FAIL: bad tab accepted")
+    except ValueError:
+        pass
+    assert sheet.requests == [], "partial rule leaked before validation"
     print("ok")
 
 

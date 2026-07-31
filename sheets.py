@@ -6,6 +6,7 @@ Scope is `spreadsheets` only -- no Drive access, so sheets are addressed by ID, 
 
 import gspread
 from gspread.urls import SPREADSHEETS_API_V4_BASE_URL
+from gspread.utils import a1_range_to_grid_range
 
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
@@ -65,16 +66,22 @@ def read(sheet_id, tab, a1=None, formulas=False):
     return [{"row": first + i, "values": r} for i, r in enumerate(rows)]
 
 
-def _by_tab(sh, items, build):
-    """Validate every tab name up front, then group items per tab.
+def _worksheets(sh, items):
+    """Map tab title -> worksheet, raising if any item names a tab that isn't there.
 
-    Validating before grouping is the point: a typo'd tab name must abort the
+    Validating everything up front is the point: a typo'd tab name must abort the
     whole call rather than apply to the tabs that happened to be spelled right.
     """
-    known = {w.title for w in sh.worksheets()}
+    known = {w.title: w for w in sh.worksheets()}
     for i in items:
         if i["tab"] not in known:
             raise ValueError(f"no such tab: {i['tab']!r} (have: {sorted(known)})")
+    return known
+
+
+def _by_tab(sh, items, build):
+    """Validate tab names, then group items per tab."""
+    _worksheets(sh, items)
     grouped = {}
     for i in items:
         grouped.setdefault(i["tab"], []).append(build(i))
@@ -115,6 +122,52 @@ def format_cells(sheet_id, formats):
     return {"ranges_formatted": len(formats), "tabs": sorted(by_tab)}
 
 
+def freeze(sheet_id, tab, rows=1, cols=0):
+    """Freeze header rows and/or leading columns so they stay put when scrolling."""
+    rows, cols = int(rows), int(cols)  # CLI hands these over as strings
+    client().open_by_key(sheet_id).worksheet(tab).freeze(rows, cols)
+    return {"tab": tab, "frozen_rows": rows, "frozen_cols": cols}
+
+
+def conditional(sheet_id, rules, replace=False):
+    """Add conditional-format rules: colour cells based on what's in them.
+
+    rules: [{"tab": str, "a1": "B2:B99",
+             "condition": <BooleanCondition>, "format": <CellFormat>}, ...]
+
+      negative red   {"type": "NUMBER_LESS", "values": [{"userEnteredValue": "0"}]}
+      status match   {"type": "TEXT_EQ",     "values": [{"userEnteredValue": "AMBER"}]}
+      over budget    {"type": "CUSTOM_FORMULA",
+                      "values": [{"userEnteredValue": "=$C2>$B2"}]}
+
+    CUSTOM_FORMULA is the general case -- it can reference other columns, and its
+    row references are relative to the range's first row.
+
+    replace=True clears existing rules on the touched tabs first. Leave it False
+    (default) to add to what's there; re-running the same call then stacks
+    duplicate rules, which is the usual way a sheet ends up with nine copies.
+    """
+    sh = client().open_by_key(sheet_id)
+    known = _worksheets(sh, rules)
+    reqs = []
+    if replace:
+        meta = {s["properties"]["sheetId"]: len(s.get("conditionalFormats", []))
+                for s in sh.fetch_sheet_metadata()["sheets"]}
+        for tab in {r["tab"] for r in rules}:
+            sid = known[tab].id
+            # delete back-to-front: each removal renumbers the rules after it
+            reqs += [{"deleteConditionalFormatRule": {"sheetId": sid, "index": i}}
+                     for i in reversed(range(meta.get(sid, 0)))]
+    for r in rules:
+        reqs.append({"addConditionalFormatRule": {"index": 0, "rule": {
+            "ranges": [a1_range_to_grid_range(r["a1"], known[r["tab"]].id)],
+            "booleanRule": {"condition": r["condition"], "format": r["format"]},
+        }}})
+    sh.batch_update({"requests": reqs})
+    return {"rules_added": len(rules), "replaced": replace,
+            "tabs": sorted({r["tab"] for r in rules})}
+
+
 def append(sheet_id, tab, rows):
     """Append rows below the last non-empty row. rows: [[cell, cell, ...], ...]"""
     ws = client().open_by_key(sheet_id).worksheet(tab)
@@ -127,7 +180,8 @@ if __name__ == "__main__":
     import sys
 
     fn = {"create": create, "tabs": tabs, "read": read, "write": write,
-          "append": append, "format": format_cells}[sys.argv[1]]
+          "append": append, "format": format_cells,
+          "freeze": freeze, "conditional": conditional}[sys.argv[1]]
     args = [json.loads(a) if a[:1] in "[{" or a in ("true", "false") else a
             for a in sys.argv[2:]]
     print(json.dumps(fn(*args), indent=2, ensure_ascii=False))

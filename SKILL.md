@@ -24,6 +24,8 @@ P="$HOME/.gsheets-mcp/.venv/bin/python"; S="$HOME/.gsheets-mcp/sheets.py"
 "$P" "$S" write  <sheet_id> '[{"tab":"Dashboard","a1":"B7","value":"x"}]'
 "$P" "$S" append <sheet_id> "Log" '[["row","of","cells"]]'
 "$P" "$S" format <sheet_id> '[{"tab":"Log","a1":"B2:B99","format":{"numberFormat":{"type":"CURRENCY","pattern":"₹#,##0.00"}}}]'
+"$P" "$S" freeze <sheet_id> "Log" 1
+"$P" "$S" conditional <sheet_id> '[{"tab":"Log","a1":"B2:B99","condition":{"type":"NUMBER_LESS","values":[{"userEnteredValue":"0"}]},"format":{"backgroundColor":{"red":1,"green":0.8,"blue":0.8}}}]'
 ```
 
 `read` returns `{row, values}` with 1-indexed sheet rows. `write` batches one API
@@ -81,9 +83,31 @@ Colours are 0–1 floats, not 0–255. Currency cells hold plain numbers (`1200`
 `"₹1,200"` — the format does the rendering; a currency string would be dead text.
 Building a sheet: values and formulas first, then one `format` call at the end.
 
-**Still not supported:** conditional formatting, data validation/dropdowns, charts,
-named ranges, frozen rows, column widths, protected ranges. Say so rather than
-implying they were applied.
+## Frozen rows and conditional formatting
+
+`freeze` pins header rows/columns: `freeze <id> "Log" 1` freezes the top row.
+
+`conditional` colours cells by their contents —
+`[{"tab", "a1", "condition": <BooleanCondition>, "format": <CellFormat>}, ...]`:
+
+```json
+{"type":"NUMBER_LESS",   "values":[{"userEnteredValue":"0"}]}
+{"type":"TEXT_EQ",       "values":[{"userEnteredValue":"Overdue"}]}
+{"type":"NUMBER_BETWEEN","values":[{"userEnteredValue":"0"},{"userEnteredValue":"100"}]}
+{"type":"CUSTOM_FORMULA","values":[{"userEnteredValue":"=$C2>$B2"}]}
+```
+
+`CUSTOM_FORMULA` is the general case: it can reference other columns, and its row
+number must be the range's **first** row (`$C2` for a range starting at row 2) — the
+rule is then applied relative to each row. Lock the column with `$`, not the row.
+
+**Rules stack.** Running the same call twice leaves two identical rules. Pass
+`replace=true` when re-applying rules to a sheet you've styled before — it clears
+existing rules on those tabs first. That also deletes rules the user made by hand, so
+default to appending unless you're re-running your own setup.
+
+**Still not supported:** data validation/dropdowns, charts, named ranges, column
+widths, protected ranges. Say so rather than implying they were applied.
 
 ## Rules
 
