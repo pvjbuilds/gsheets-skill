@@ -1,0 +1,99 @@
+"""Reusable Google Sheets read/write core. Works on any sheet the OAuth user owns.
+
+Auth: gspread's cached OAuth (credentials.json -> browser consent once -> authorized_user.json).
+Scope is `spreadsheets` only -- no Drive access, so sheets are addressed by ID, never by name.
+"""
+
+import gspread
+from gspread.urls import SPREADSHEETS_API_V4_BASE_URL
+
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
+
+_client = None
+
+
+def client():
+    global _client
+    if _client is None:
+        _client = gspread.oauth(scopes=SCOPES)
+    return _client
+
+
+def create(title, tab_names=None):
+    """Create a new spreadsheet in the user's My Drive root. Returns id + url.
+
+    Uses the Sheets API's own create method, not Drive's, so this works under the
+    spreadsheets-only scope. Cost of that: the new file lands in My Drive root and
+    can't be placed in a folder from here -- move it in the Drive UI.
+    """
+    body = {"properties": {"title": title}}
+    if tab_names:
+        body["sheets"] = [{"properties": {"title": t}} for t in tab_names]
+    r = client().http_client.request(
+        "post", SPREADSHEETS_API_V4_BASE_URL, json=body
+    ).json()
+    return {"id": r["spreadsheetId"], "url": r["spreadsheetUrl"],
+            "tabs": [s["properties"]["title"] for s in r["sheets"]]}
+
+
+def tabs(sheet_id):
+    """List tab names with their row/col extents."""
+    return [
+        {"title": w.title, "rows": w.row_count, "cols": w.col_count}
+        for w in client().open_by_key(sheet_id).worksheets()
+    ]
+
+
+def read(sheet_id, tab, a1=None):
+    """Return rows as {row: <1-indexed sheet row>, values: [...]}.
+
+    Row numbers come back so callers can locate a row by its label and then
+    address it in a write without re-deriving the offset.
+    """
+    ws = client().open_by_key(sheet_id).worksheet(tab)
+    if a1:
+        rows = ws.get(a1)
+        first = int("".join(c for c in a1.split(":")[0] if c.isdigit()) or 1)
+    else:
+        rows = ws.get_all_values()
+        first = 1
+    return [{"row": first + i, "values": r} for i, r in enumerate(rows)]
+
+
+def write(sheet_id, updates):
+    """Batch-write cells. updates: [{"tab": str, "a1": "B7", "value": str}, ...]
+
+    One API call per tab. Writing to a merged range's anchor cell (e.g. B7 of a
+    merged B7:D7) updates the merge without breaking it.
+    """
+    sh = client().open_by_key(sheet_id)
+    known = {w.title for w in sh.worksheets()}
+    for u in updates:
+        if u["tab"] not in known:
+            raise ValueError(f"no such tab: {u['tab']!r} (have: {sorted(known)})")
+
+    by_tab = {}
+    for u in updates:
+        by_tab.setdefault(u["tab"], []).append(
+            {"range": u["a1"], "values": [[u["value"]]]}
+        )
+    for tab, batch in by_tab.items():
+        sh.worksheet(tab).batch_update(batch, value_input_option="USER_ENTERED")
+    return {"cells_written": len(updates), "tabs": sorted(by_tab)}
+
+
+def append(sheet_id, tab, rows):
+    """Append rows below the last non-empty row. rows: [[cell, cell, ...], ...]"""
+    ws = client().open_by_key(sheet_id).worksheet(tab)
+    ws.append_rows(rows, value_input_option="USER_ENTERED")
+    return {"rows_appended": len(rows), "tab": tab}
+
+
+if __name__ == "__main__":
+    import json
+    import sys
+
+    fn = {"create": create, "tabs": tabs, "read": read,
+          "write": write, "append": append}[sys.argv[1]]
+    args = [json.loads(a) if a[:1] in "[{" else a for a in sys.argv[2:]]
+    print(json.dumps(fn(*args), indent=2, ensure_ascii=False))

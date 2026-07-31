@@ -1,0 +1,63 @@
+---
+name: gsheets
+description: "Create, read, and edit Google Sheets in your own Google Drive — new trackers from scratch, or bulk/structured edits to an existing sheet (updating rows, filling columns, appending entries, applying a batch of changes). Use whenever a Google Sheet or a sheet ID/URL is named, or when the user asks to build a spreadsheet, log data into one, or apply changes to one. Not for local .xlsx files."
+---
+
+# gsheets
+
+Google Sheets read/write via `$HOME/.gsheets-mcp/`. OAuth token is
+cached globally at `~/.config/gspread/`, so this works from any directory.
+
+**Requires a session with Bash access to the machine where it is installed.** A cloud sandbox session has
+neither the venv nor the token — say so and stop rather than improvising.
+
+Preflight: `ls ~/.config/gspread/authorized_user.json`. Missing → the backend isn't
+authorised on this machine; point the user at `~/.gsheets-mcp/README.md` and stop.
+
+## Commands
+
+```bash
+P="$HOME/.gsheets-mcp/.venv/bin/python"; S="$HOME/.gsheets-mcp/sheets.py"
+"$P" "$S" create "My Tracker" '["Dashboard","Log"]'
+"$P" "$S" tabs   <sheet_id>
+"$P" "$S" read   <sheet_id> "Dashboard" [A1:H40]
+"$P" "$S" write  <sheet_id> '[{"tab":"Dashboard","a1":"B7","value":"x"}]'
+"$P" "$S" append <sheet_id> "Log" '[["row","of","cells"]]'
+```
+
+`read` returns `{row, values}` with 1-indexed sheet rows. `write` batches one API
+call per tab and validates every tab name before writing anything. Sheet ID is the
+long string in the URL between `/d/` and `/edit`.
+
+## Procedure for edits
+
+1. **Read the target tabs first.** Always. Never write to a row number taken from a
+   spec, a previous session, or an uploaded doc — layouts drift.
+2. **Resolve each change to a real cell** by finding its row label in the read output.
+   If a label isn't found, **stop and ask** — never write to a best-guess row.
+3. **Dry-run** when there are more than ~10 cells: print tab/cell/value and eyeball it.
+4. **Write** as one batch.
+5. **Read back and confirm** each change, by name, in the reply.
+
+For anything over ~20 changes, write a throwaway Python file that imports `sheets`,
+builds the update list, and supports `--dry-run` — rather than hand-rolling a giant
+JSON argument on the command line.
+
+## Rules
+
+- Don't restructure: no renaming tabs, reordering rows, changing headers, deleting rows.
+- Don't touch cells no one asked about.
+- **Merged cells:** write to the anchor cell (`B` of a merged `B:D`). Preserves the merge.
+- **Formulas:** `read` returns computed values. To check whether a cell holds a formula,
+  read it with `value_render_option='FORMULA'` via the library. Never overwrite a
+  formula cell without flagging it first.
+- **New rows:** if the sheet has pre-numbered or blank rows inside the table, fill them
+  in place — `append` goes below the *last* non-empty row, which may sit under footnotes.
+- Report anything skipped or half-applied, explicitly, at the end.
+
+## Scope limits
+
+`spreadsheets` scope only — no Drive. Consequences:
+- Sheets are addressed by **ID**, never searched by name. Ask for the ID or URL.
+- New sheets land in **My Drive root**; they can't be filed into a folder from here.
+- Cannot delete, rename, share, or list files.

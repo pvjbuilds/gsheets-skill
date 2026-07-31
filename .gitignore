@@ -1,0 +1,10 @@
+.venv/
+__pycache__/
+
+# Never commit: one-off appliers hold real sheet content (personal/commercial data)
+apply_*.py
+
+# Never commit: Google OAuth client secret and cached token
+*.json
+credentials.json
+authorized_user.json
