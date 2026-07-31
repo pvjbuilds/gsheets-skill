@@ -65,6 +65,22 @@ def read(sheet_id, tab, a1=None, formulas=False):
     return [{"row": first + i, "values": r} for i, r in enumerate(rows)]
 
 
+def _by_tab(sh, items, build):
+    """Validate every tab name up front, then group items per tab.
+
+    Validating before grouping is the point: a typo'd tab name must abort the
+    whole call rather than apply to the tabs that happened to be spelled right.
+    """
+    known = {w.title for w in sh.worksheets()}
+    for i in items:
+        if i["tab"] not in known:
+            raise ValueError(f"no such tab: {i['tab']!r} (have: {sorted(known)})")
+    grouped = {}
+    for i in items:
+        grouped.setdefault(i["tab"], []).append(build(i))
+    return grouped
+
+
 def write(sheet_id, updates):
     """Batch-write cells. updates: [{"tab": str, "a1": "B7", "value": str}, ...]
 
@@ -72,19 +88,31 @@ def write(sheet_id, updates):
     merged B7:D7) updates the merge without breaking it.
     """
     sh = client().open_by_key(sheet_id)
-    known = {w.title for w in sh.worksheets()}
-    for u in updates:
-        if u["tab"] not in known:
-            raise ValueError(f"no such tab: {u['tab']!r} (have: {sorted(known)})")
-
-    by_tab = {}
-    for u in updates:
-        by_tab.setdefault(u["tab"], []).append(
-            {"range": u["a1"], "values": [[u["value"]]]}
-        )
+    by_tab = _by_tab(sh, updates, lambda u: {"range": u["a1"], "values": [[u["value"]]]})
     for tab, batch in by_tab.items():
         sh.worksheet(tab).batch_update(batch, value_input_option="USER_ENTERED")
     return {"cells_written": len(updates), "tabs": sorted(by_tab)}
+
+
+def format_cells(sheet_id, formats):
+    """Apply cell formatting. Values are untouched -- this only changes rendering.
+
+    formats: [{"tab": str, "a1": "B2:B20", "format": {...}}, ...] where format is a
+    Sheets API CellFormat. Common ones (see README for more):
+
+      currency  {"numberFormat": {"type": "CURRENCY", "pattern": "₹#,##0.00"}}
+      percent   {"numberFormat": {"type": "PERCENT",  "pattern": "0.0%"}}
+      date      {"numberFormat": {"type": "DATE",     "pattern": "dd-mmm-yyyy"}}
+      bold      {"textFormat": {"bold": True}}
+      fill      {"backgroundColor": {"red": 0.9, "green": 0.9, "blue": 0.9}}
+
+    Keys merge, so a header can be bold AND filled in one format dict.
+    """
+    sh = client().open_by_key(sheet_id)
+    by_tab = _by_tab(sh, formats, lambda f: {"range": f["a1"], "format": f["format"]})
+    for tab, batch in by_tab.items():
+        sh.worksheet(tab).batch_format(batch)
+    return {"ranges_formatted": len(formats), "tabs": sorted(by_tab)}
 
 
 def append(sheet_id, tab, rows):
@@ -98,8 +126,8 @@ if __name__ == "__main__":
     import json
     import sys
 
-    fn = {"create": create, "tabs": tabs, "read": read,
-          "write": write, "append": append}[sys.argv[1]]
+    fn = {"create": create, "tabs": tabs, "read": read, "write": write,
+          "append": append, "format": format_cells}[sys.argv[1]]
     args = [json.loads(a) if a[:1] in "[{" or a in ("true", "false") else a
             for a in sys.argv[2:]]
     print(json.dumps(fn(*args), indent=2, ensure_ascii=False))

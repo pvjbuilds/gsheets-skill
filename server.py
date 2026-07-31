@@ -49,6 +49,16 @@ def sheets_write(sheet_id: str, updates: list[dict]) -> dict:
     return sheets.write(sheet_id, updates)
 
 
+@mcp.tool(
+    description="Apply cell formatting without touching values. formats is a list of "
+    "{tab, a1, format} where format is a Sheets API CellFormat, e.g. "
+    "{'numberFormat':{'type':'CURRENCY','pattern':'₹#,##0.00'}} or "
+    "{'textFormat':{'bold':true}} or {'backgroundColor':{'red':0.9,'green':0.9,'blue':0.9}}."
+)
+def sheets_format(sheet_id: str, formats: list[dict]) -> dict:
+    return sheets.format_cells(sheet_id, formats)
+
+
 @mcp.tool(description="Append rows below the last non-empty row of a tab.")
 def sheets_append(sheet_id: str, tab: str, rows: list[list[str]]) -> dict:
     return sheets.append(sheet_id, tab, rows)

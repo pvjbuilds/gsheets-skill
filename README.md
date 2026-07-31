@@ -22,7 +22,7 @@ Install once per machine. Works from every project directory afterwards.
 |---|---|
 | **The skill** (`SKILL.md`) | Instructions Claude loads when a Google Sheet comes up. Holds the working procedure and the safety rules. |
 | **The library** (`sheets.py`) | ~80 lines over [`gspread`](https://docs.gspread.org/). Also a CLI. This is what actually talks to Google. |
-| **The MCP server** (`server.py`) | Exposes the library as five tools to Claude sessions that prefer tools over shell commands. Optional. |
+| **The MCP server** (`server.py`) | Exposes the library as six tools to Claude sessions that prefer tools over shell commands. Optional. |
 | **The installer** (`install.sh`) | Puts everything in the right place on a new machine. |
 
 The skill is the instructions; the library is the hands. You need both, and
@@ -47,6 +47,7 @@ cd gsheets-skill
 | **Read** | "What's in the Summary tab?" |
 | **Write** | "Set the Q3 row's status to Approved" |
 | **Append** | "Add a row for the migration project" |
+| **Format** | "Make the header bold and show column B as currency" |
 | **Bulk edit** | "Apply all 24 changes in this document to the sheet" |
 
 Give Claude the sheet **URL or ID** and describe the change in normal language. The
@@ -85,10 +86,30 @@ Read formulas back instead of their results:
 "$P" "$S" read <sheet_id> "Summary" "A1:D20" true    # formula text, not values
 ```
 
-**What it can't do: formatting.** Number and currency formats, conditional formatting,
-dropdowns, charts, named ranges, frozen rows, column widths. Values and formulas land
-correctly; they just render unstyled. You'd format the sheet yourself once, and the
-formatting persists through every later edit.
+## Formatting
+
+`format` changes how cells render without touching their values:
+
+```bash
+"$P" "$S" format <sheet_id> '[
+  {"tab":"Summary","a1":"A1:D1",  "format":{"textFormat":{"bold":true},
+                                            "backgroundColor":{"red":0.85,"green":0.89,"blue":0.95}}},
+  {"tab":"Summary","a1":"B2:B99", "format":{"numberFormat":{"type":"CURRENCY","pattern":"₹#,##0.00"}}},
+  {"tab":"Summary","a1":"C2:C99", "format":{"numberFormat":{"type":"PERCENT","pattern":"0.0%"}}}
+]'
+```
+
+Turns `1200` into `₹1,200.00` and `0.2727` into `27.3%`. Any
+[CellFormat](https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/cells#cellformat)
+field works — number/currency/date formats, bold and italic, text and background
+colour (0–1 floats), alignment, wrapping. Keys combine in one dict.
+
+Formats persist through later value writes, so you format a sheet once and every
+subsequent edit stays styled. Keep currency cells as plain numbers — the format does
+the rendering.
+
+**Still not supported:** conditional formatting, data validation and dropdowns, charts,
+named ranges, frozen rows, column widths, protected ranges.
 
 ## Scope and limits
 
@@ -118,6 +139,7 @@ P=~/.gsheets-mcp/.venv/bin/python; S=~/.gsheets-mcp/sheets.py
 "$P" "$S" read   <sheet_id> "Dashboard"          # optional 4th arg: "A1:H40"
 "$P" "$S" write  <sheet_id> '[{"tab":"Dashboard","a1":"B7","value":"done"}]'
 "$P" "$S" append <sheet_id> "Log" '[["2026-08-01","entry"]]'
+"$P" "$S" format <sheet_id> '[{"tab":"Log","a1":"B2:B99","format":{"textFormat":{"bold":true}}}]'
 ```
 
 `read` returns `{row, values}` with **1-indexed sheet row numbers**, so you can find a
@@ -145,7 +167,8 @@ project's `.mcp.json` (expand `~` to your real home path — `.mcp.json` won't):
   "args":["/Users/YOU/.gsheets-mcp/server.py"]}}}
 ```
 
-Tools: `sheets_create`, `sheets_tabs`, `sheets_read`, `sheets_write`, `sheets_append`.
+Tools: `sheets_create`, `sheets_tabs`, `sheets_read`, `sheets_write`, `sheets_append`,
+`sheets_format`.
 Restart the session to pick it up. The skill works fine without this.
 
 ## Self-check

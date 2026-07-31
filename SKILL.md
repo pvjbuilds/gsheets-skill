@@ -23,6 +23,7 @@ P="$HOME/.gsheets-mcp/.venv/bin/python"; S="$HOME/.gsheets-mcp/sheets.py"
 "$P" "$S" read   <sheet_id> "Dashboard" [A1:H40]
 "$P" "$S" write  <sheet_id> '[{"tab":"Dashboard","a1":"B7","value":"x"}]'
 "$P" "$S" append <sheet_id> "Log" '[["row","of","cells"]]'
+"$P" "$S" format <sheet_id> '[{"tab":"Log","a1":"B2:B99","format":{"numberFormat":{"type":"CURRENCY","pattern":"₹#,##0.00"}}}]'
 ```
 
 `read` returns `{row, values}` with 1-indexed sheet rows. `write` batches one API
@@ -60,10 +61,29 @@ cells referencing it. Read back with `formulas=True` to confirm the formula text
 without it to confirm the computed result is sane — a formula that returns `#REF!` or
 `0` still "wrote successfully".
 
-**Not supported — these are formatting, not values:** number/currency/date formats,
-conditional formatting, data validation and dropdowns, charts, named ranges, frozen
-rows, column widths, protected ranges. Values and formulas go in fine; they'll render
-unformatted. Say so rather than pretending a currency format was applied.
+## Formatting
+
+`format` changes how cells render; it never touches their values or formulas.
+`[{"tab": str, "a1": "B2:B20", "format": <CellFormat>}, ...]`, batched per tab like
+`write`. Formats persist through later value writes, so format a sheet once.
+
+```json
+{"numberFormat": {"type":"CURRENCY","pattern":"₹#,##0.00"}}
+{"numberFormat": {"type":"PERCENT", "pattern":"0.0%"}}
+{"numberFormat": {"type":"DATE",    "pattern":"dd-mmm-yyyy"}}
+{"textFormat":   {"bold":true}}
+{"backgroundColor": {"red":0.85,"green":0.89,"blue":0.95}}
+{"horizontalAlignment":"RIGHT"}
+```
+
+Keys combine in one dict — a header row is usually `textFormat` + `backgroundColor`.
+Colours are 0–1 floats, not 0–255. Currency cells hold plain numbers (`1200`), never
+`"₹1,200"` — the format does the rendering; a currency string would be dead text.
+Building a sheet: values and formulas first, then one `format` call at the end.
+
+**Still not supported:** conditional formatting, data validation/dropdowns, charts,
+named ranges, frozen rows, column widths, protected ranges. Say so rather than
+implying they were applied.
 
 ## Rules
 

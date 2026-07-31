@@ -6,7 +6,8 @@ import sheets
 
 class FakeWS:
     def __init__(self, title, grid):
-        self.title, self.grid, self.batches, self.appended = title, grid, [], []
+        self.title, self.grid = title, grid
+        self.batches, self.appended, self.formats = [], [], []
         self.row_count, self.col_count = len(grid), 8
 
     def get_values(self, value_render_option=None):
@@ -19,6 +20,9 @@ class FakeWS:
 
     def batch_update(self, batch, value_input_option=None):
         self.batches.append(batch)
+
+    def batch_format(self, batch):
+        self.formats.append(batch)
 
     def append_rows(self, rows, value_input_option=None):
         self.appended.extend(rows)
@@ -71,6 +75,26 @@ def demo():
 
     assert sheets.append("id", "Log", [["Project B", "New"]])["rows_appended"] == 1
     assert log.appended == [["Project B", "New"]]
+
+    # format: same grouping + validation path as write, and values stay untouched
+    bold = {"textFormat": {"bold": True}}
+    money = {"numberFormat": {"type": "CURRENCY", "pattern": "#,##0.00"}}
+    r = sheets.format_cells("id", [
+        {"tab": "Log", "a1": "A1:B1", "format": bold},
+        {"tab": "Log", "a1": "B2:B99", "format": money},
+    ])
+    assert r == {"ranges_formatted": 2, "tabs": ["Log"]}
+    assert len(log.formats) == 1 and len(log.formats[0]) == 2, log.formats
+    assert log.formats[0][0] == {"range": "A1:B1", "format": bold}
+    assert log.grid[1] == ["Project A", "Pending"], "formatting must not alter values"
+
+    log.formats.clear()
+    try:
+        sheets.format_cells("id", [{"tab": "Lgo", "a1": "A1", "format": bold}])
+        raise SystemExit("FAIL: bad tab accepted")
+    except ValueError:
+        pass
+    assert log.formats == [], "partial format leaked before validation"
     print("ok")
 
 
