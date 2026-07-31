@@ -72,6 +72,24 @@ deleting rows, no touching cells nobody asked about. Merged cells are written th
 their anchor cell so the merge survives, and formula cells are flagged rather than
 silently overwritten.
 
+## Formulas
+
+Writes use `USER_ENTERED`, so a value beginning with `=` becomes a live formula, same
+as typing it in. `SUM`, `SUMIF`, `XLOOKUP`, `QUERY`, `ARRAYFORMULA`, absolute refs,
+cross-tab refs — all of it works, and Claude writes the formula for you from a plain
+description ("total the expenses column, then show each category as a % of it").
+
+Read formulas back instead of their results:
+
+```bash
+"$P" "$S" read <sheet_id> "Summary" "A1:D20" true    # formula text, not values
+```
+
+**What it can't do: formatting.** Number and currency formats, conditional formatting,
+dropdowns, charts, named ranges, frozen rows, column widths. Values and formulas land
+correctly; they just render unstyled. You'd format the sheet yourself once, and the
+formatting persists through every later edit.
+
 ## Scope and limits
 
 Authentication uses the **`spreadsheets` scope only — no Google Drive access.** That's

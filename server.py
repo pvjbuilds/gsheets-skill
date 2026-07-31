@@ -31,10 +31,13 @@ def sheets_tabs(sheet_id: str) -> list[dict]:
 
 @mcp.tool(
     description="Read a tab. Returns rows as {row, values} with 1-indexed sheet "
-    "row numbers. Optional a1 range (e.g. 'A1:H40') limits the read."
+    "row numbers. Optional a1 range (e.g. 'A1:H40') limits the read. "
+    "formulas=True returns formula text instead of computed values — use it "
+    "before editing a calculated sheet so you can see what you'd overwrite."
 )
-def sheets_read(sheet_id: str, tab: str, a1: str | None = None) -> list[dict]:
-    return sheets.read(sheet_id, tab, a1)
+def sheets_read(sheet_id: str, tab: str, a1: str | None = None,
+                formulas: bool = False) -> list[dict]:
+    return sheets.read(sheet_id, tab, a1, formulas)
 
 
 @mcp.tool(

@@ -43,14 +43,36 @@ For anything over ~20 changes, write a throwaway Python file that imports `sheet
 builds the update list, and supports `--dry-run` — rather than hand-rolling a giant
 JSON argument on the command line.
 
+## Writing formulas
+
+Writes use `USER_ENTERED`, so any value starting with `=` becomes a **live formula**,
+exactly as if typed into the cell. Everything Sheets supports works: `SUM`, `SUMIF`,
+`XLOOKUP`, `QUERY`, `ARRAYFORMULA`, `IFERROR`, absolute refs (`$B$4`), cross-tab refs
+(`='Log'!B2`), whole-column ranges.
+
+```json
+[{"tab":"Summary","a1":"B10","value":"=SUM(Expenses!C2:C)"},
+ {"tab":"Summary","a1":"C10","value":"=IFERROR(B10/$B$20,0)"}]
+```
+
+When building a calculated sheet: lay out the data tab first, then write the formula
+cells referencing it. Read back with `formulas=True` to confirm the formula text, and
+without it to confirm the computed result is sane — a formula that returns `#REF!` or
+`0` still "wrote successfully".
+
+**Not supported — these are formatting, not values:** number/currency/date formats,
+conditional formatting, data validation and dropdowns, charts, named ranges, frozen
+rows, column widths, protected ranges. Values and formulas go in fine; they'll render
+unformatted. Say so rather than pretending a currency format was applied.
+
 ## Rules
 
 - Don't restructure: no renaming tabs, reordering rows, changing headers, deleting rows.
 - Don't touch cells no one asked about.
 - **Merged cells:** write to the anchor cell (`B` of a merged `B:D`). Preserves the merge.
-- **Formulas:** `read` returns computed values. To check whether a cell holds a formula,
-  read it with `value_render_option='FORMULA'` via the library. Never overwrite a
-  formula cell without flagging it first.
+- **Formulas:** `read` returns computed values; add `true` as the 4th arg (or
+  `formulas=True`) to see formula text instead. Do that before editing any calculated
+  sheet, and never overwrite a formula cell without flagging it first.
 - **New rows:** if the sheet has pre-numbered or blank rows inside the table, fill them
   in place — `append` goes below the *last* non-empty row, which may sit under footnotes.
 - Report anything skipped or half-applied, explicitly, at the end.

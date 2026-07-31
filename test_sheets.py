@@ -9,10 +9,10 @@ class FakeWS:
         self.title, self.grid, self.batches, self.appended = title, grid, [], []
         self.row_count, self.col_count = len(grid), 8
 
-    def get_all_values(self):
+    def get_values(self, value_render_option=None):
         return self.grid
 
-    def get(self, a1):
+    def get(self, a1, value_render_option=None):
         lo = int("".join(c for c in a1.split(":")[0] if c.isdigit()))
         hi = int("".join(c for c in a1.split(":")[1] if c.isdigit()))
         return self.grid[lo - 1 : hi]

@@ -44,18 +44,23 @@ def tabs(sheet_id):
     ]
 
 
-def read(sheet_id, tab, a1=None):
+def read(sheet_id, tab, a1=None, formulas=False):
     """Return rows as {row: <1-indexed sheet row>, values: [...]}.
 
     Row numbers come back so callers can locate a row by its label and then
     address it in a write without re-deriving the offset.
+
+    formulas=True returns the underlying formula text (e.g. "=SUM(B2:B9)")
+    instead of the computed value -- use it before editing a calculated sheet,
+    so you can see what you are about to overwrite.
     """
     ws = client().open_by_key(sheet_id).worksheet(tab)
+    render = "FORMULA" if formulas else "FORMATTED_VALUE"
     if a1:
-        rows = ws.get(a1)
+        rows = ws.get(a1, value_render_option=render)
         first = int("".join(c for c in a1.split(":")[0] if c.isdigit()) or 1)
     else:
-        rows = ws.get_all_values()
+        rows = ws.get_values(value_render_option=render)
         first = 1
     return [{"row": first + i, "values": r} for i, r in enumerate(rows)]
 
@@ -95,5 +100,6 @@ if __name__ == "__main__":
 
     fn = {"create": create, "tabs": tabs, "read": read,
           "write": write, "append": append}[sys.argv[1]]
-    args = [json.loads(a) if a[:1] in "[{" else a for a in sys.argv[2:]]
+    args = [json.loads(a) if a[:1] in "[{" or a in ("true", "false") else a
+            for a in sys.argv[2:]]
     print(json.dumps(fn(*args), indent=2, ensure_ascii=False))
