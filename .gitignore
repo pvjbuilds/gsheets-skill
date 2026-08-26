@@ -8,3 +8,4 @@ apply_*.py
 *.json
 credentials.json
 authorized_user.json
+.DS_Store
