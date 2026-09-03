@@ -223,6 +223,17 @@ No credentials, no tokens, no sheet IDs, no spreadsheet content. `.gitignore` bl
 `*.json` and `apply_*.py` so none of that can drift in later. Your Google credentials
 live only in `~/.config/gspread/` on each machine.
 
+## Self-improvement
+
+Every run ends by asking itself three questions: did a step fail or need a workaround, did I
+correct or reject anything meaningful, did it discover something a future run should know.
+If the answer to any of them is yes, it proposes an edit to `SKILL.md`. I accept or reject
+it — nothing changes on its own.
+
+The point is that keeping the skill correct becomes a side effect of using it, instead of a
+separate chore that never gets done. Adapted from the self-improvement block in Remy
+Gaskell's Multiplayer Skills Guide (2026).
+
 ## Licence
 
 Personal tooling. Use it however you like.

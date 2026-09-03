@@ -127,3 +127,12 @@ widths, protected ranges. Say so rather than implying they were applied.
 - Sheets are addressed by **ID**, never searched by name. Ask for the ID or URL.
 - New sheets land in **My Drive root**; they can't be filed into a folder from here.
 - Cannot delete, rename, share, or list files.
+
+## Self-Improvement
+
+At the end of every run, before ending:
+1. Did any step fail or need a workaround?
+2. Did the user correct or reject anything meaningful?
+3. Did you discover something a future run might need?
+
+Only propose a change if it meaningfully improves the skill.
