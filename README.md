@@ -39,6 +39,11 @@ cd gsheets-skill
 ./install.sh
 ```
 
+**If you create your own Google credentials, don't skip [Step 4](SETUP.md#step-4--stop-it-breaking-after-a-week).**
+Google cancels the sign-in of any newly created project after seven days, without warning.
+Step 4 explains how to re-authorise in thirty seconds, and how to switch the expiry off
+permanently.
+
 ## What it can do
 
 | Operation | Example ask |
