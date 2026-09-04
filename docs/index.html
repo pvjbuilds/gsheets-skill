@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>gsheets — Google Sheets for Claude</title>
+<meta name="description" content="A Claude skill that creates, reads, and edits Google Sheets from plain English, with guardrails that stop it mangling your spreadsheet.">
+<style>
+  :root{
+    --bg:#fbfbf9; --fg:#1c1c1a; --muted:#6b6b66; --rule:#e4e3de;
+    --card:#fff; --accent:#1a6b47; --code-bg:#f2f1ec;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{ --bg:#141414; --fg:#e8e7e3; --muted:#9a9992; --rule:#2c2c2a;
+           --card:#1c1c1b; --accent:#6cc79b; --code-bg:#232322; }
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--fg);
+       font:16px/1.6 ui-sans-serif,-apple-system,"Segoe UI",Roboto,sans-serif;
+       -webkit-font-smoothing:antialiased}
+  .wrap{max-width:720px;margin:0 auto;padding:64px 24px 96px}
+  h1{font-size:2.1rem;letter-spacing:-.022em;margin:0 0 .3em}
+  h2{font-size:1.05rem;letter-spacing:.02em;text-transform:uppercase;
+     color:var(--muted);margin:56px 0 16px;font-weight:600}
+  .lede{font-size:1.15rem;color:var(--muted);margin:0 0 36px;max-width:56ch}
+  a{color:var(--accent)}
+  pre{background:var(--code-bg);border:1px solid var(--rule);border-radius:10px;
+      padding:16px 18px;overflow-x:auto;font-size:.87rem;line-height:1.55;margin:0}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}
+  p code{background:var(--code-bg);padding:.12em .38em;border-radius:4px;font-size:.9em}
+  table{width:100%;border-collapse:collapse;font-size:.94rem}
+  td{padding:11px 0;border-bottom:1px solid var(--rule);vertical-align:top}
+  td:first-child{width:34%;padding-right:20px;font-weight:600}
+  td:last-child{color:var(--muted)}
+  .card{background:var(--card);border:1px solid var(--rule);border-radius:12px;
+        padding:22px 24px;margin:0 0 14px}
+  .card h3{margin:0 0 6px;font-size:1rem}
+  .card p{margin:0;color:var(--muted);font-size:.94rem}
+  footer{margin-top:72px;padding-top:22px;border-top:1px solid var(--rule);
+         color:var(--muted);font-size:.88rem}
+  footer a{margin-right:18px}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <h1>gsheets</h1>
+  <p class="lede">A Claude skill that creates, reads, and edits Google&nbsp;Sheets in your own
+  Drive — from plain English, with guardrails that stop it mangling your spreadsheet.</p>
+
+  <pre><code>You:    "Here's my sheet: &lt;sheet URL&gt;. Set the Q3 row's status to
+         Approved, and add a row for the migration project."
+
+Claude: reads the sheet → finds those rows by name → shows you what
+        it'll write → writes it in one batch → reads it back</code></pre>
+
+  <h2>What it does</h2>
+  <table>
+    <tr><td>Create</td><td>"Build me a reading tracker with tabs for Books, Notes, and Stats"</td></tr>
+    <tr><td>Read</td><td>"What's in the Summary tab?"</td></tr>
+    <tr><td>Write</td><td>"Set the Q3 row's status to Approved"</td></tr>
+    <tr><td>Append</td><td>"Add a row for the migration project"</td></tr>
+    <tr><td>Format</td><td>"Make the header bold and show column B as currency"</td></tr>
+    <tr><td>Highlight</td><td>"Freeze the header row and turn negative amounts red"</td></tr>
+    <tr><td>Bulk edit</td><td>"Apply all 24 changes in this document to the sheet"</td></tr>
+  </table>
+
+  <h2>Why it doesn't wreck your data</h2>
+
+  <div class="card">
+    <h3>It reads before it writes</h3>
+    <p>Never trusts a row number from a document, a plan, or an earlier conversation.
+    Layouts drift; reading is cheap.</p>
+  </div>
+  <div class="card">
+    <h3>It finds rows by label, not position</h3>
+    <p>And if a label isn't there, it stops and asks rather than guessing a nearby row.</p>
+  </div>
+  <div class="card">
+    <h3>One batch per tab, or nothing</h3>
+    <p>A typo in a tab name aborts the whole write before a single cell changes —
+    so a bad edit can't half-apply.</p>
+  </div>
+  <div class="card">
+    <h3>Spreadsheets only. No Drive.</h3>
+    <p>It authenticates with the <code>spreadsheets</code> scope alone. It cannot list,
+    delete, rename, or share anything in your Google account.</p>
+  </div>
+
+  <h2>Install</h2>
+  <pre><code>git clone https://github.com/Prygozhyn/gsheets-skill.git
+cd gsheets-skill
+./install.sh</code></pre>
+  <p style="color:var(--muted);font-size:.94rem">Once per machine. Works from every project
+  directory afterwards. Full walkthrough, including Google credentials, in
+  <a href="https://github.com/Prygozhyn/gsheets-skill/blob/main/SETUP.md">SETUP.md</a>.</p>
+
+  <footer>
+    <a href="https://github.com/Prygozhyn/gsheets-skill">Source on GitHub</a>
+    <a href="privacy.html">Privacy</a>
+  </footer>
+
+</div>
+</body>
+</html>
