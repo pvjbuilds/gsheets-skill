@@ -9,3 +9,9 @@ apply_*.py
 credentials.json
 authorized_user.json
 .DS_Store
+
+# ...except the bundle manifest
+!manifest.json
+
+# Built bundles go on GitHub Releases, not in git
+*.mcpb

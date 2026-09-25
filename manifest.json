@@ -1,0 +1,38 @@
+{
+  "$schema": "https://raw.githubusercontent.com/anthropics/mcpb/main/schemas/mcpb-manifest-v0.4.schema.json",
+  "manifest_version": "0.4",
+  "name": "gsheets",
+  "display_name": "Google Sheets (your own)",
+  "version": "1.0.0",
+  "description": "Read, write, format and append to Google Sheets you own. Batched, all-or-nothing edits.",
+  "long_description": "Runs on your machine with **your own** Google Cloud OAuth client — nothing goes through a third party. Scope is `spreadsheets` only (no Drive access). Before first use, put your OAuth client file at `~/.config/gspread/credentials.json` — see [SETUP.md](https://github.com/Prygozhyn/gsheets-skill/blob/main/SETUP.md). The first tool call opens a browser for one-time consent.",
+  "author": { "name": "Prygozhyn", "url": "https://github.com/Prygozhyn" },
+  "homepage": "https://prygozhyn.github.io/gsheets-skill/",
+  "documentation": "https://github.com/Prygozhyn/gsheets-skill/blob/main/SETUP.md",
+  "support": "https://github.com/Prygozhyn/gsheets-skill/issues",
+  "repository": { "type": "git", "url": "https://github.com/Prygozhyn/gsheets-skill" },
+  "privacy_policies": ["https://prygozhyn.github.io/gsheets-skill/privacy.html"],
+  "keywords": ["google-sheets", "spreadsheets", "gspread"],
+  "server": {
+    "type": "uv",
+    "entry_point": "server.py",
+    "mcp_config": {
+      "command": "uv",
+      "args": ["run", "--directory", "${__dirname}", "server.py"]
+    }
+  },
+  "tools": [
+    { "name": "sheets_create", "description": "Create a new spreadsheet" },
+    { "name": "sheets_tabs", "description": "List tabs and sizes" },
+    { "name": "sheets_read", "description": "Read a tab with row numbers" },
+    { "name": "sheets_write", "description": "Batch-write cells" },
+    { "name": "sheets_format", "description": "Format cells without touching values" },
+    { "name": "sheets_freeze", "description": "Freeze header rows/columns" },
+    { "name": "sheets_conditional", "description": "Add conditional-format rules" },
+    { "name": "sheets_append", "description": "Append rows" }
+  ],
+  "compatibility": {
+    "platforms": ["darwin", "linux", "win32"],
+    "runtimes": { "python": ">=3.10" }
+  }
+}

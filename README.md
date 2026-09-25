@@ -212,6 +212,17 @@ Tools: `sheets_create`, `sheets_tabs`, `sheets_read`, `sheets_write`, `sheets_ap
 `sheets_format`, `sheets_freeze`, `sheets_conditional`.
 Restart the session to pick it up. The skill works fine without this.
 
+**Claude Desktop, no clone needed:** download `gsheets.mcpb` from the
+[latest release](https://github.com/Prygozhyn/gsheets-skill/releases/latest) and
+double-click it (or drag it onto Claude Desktop). Claude Desktop sets up Python and the
+libraries itself (it's a uv-runtime bundle); if it reports `uv` missing, install
+[uv](https://docs.astral.sh/uv/). You still need your own Google credentials at `~/.config/gspread/credentials.json`
+([SETUP.md](SETUP.md), Step 2 Path B, then Step 4). The first tool call opens a browser
+for the one-time consent.
+
+To rebuild the bundle: `npx @anthropic-ai/mcpb pack . gsheets.mcpb` (what ships is
+controlled by `.mcpbignore`: just the manifest, `pyproject.toml`, `server.py`, `sheets.py`).
+
 ## Self-check
 
 ```bash

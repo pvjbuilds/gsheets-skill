@@ -140,6 +140,29 @@ def demo():
     except ValueError:
         pass
     assert sheet.requests == [], "partial rule leaked before validation"
+
+    # first-run sign-in prints its consent URL; under MCP stdout IS the protocol
+    # stream, so that text must land on stderr or the server dies mid-handshake
+    import contextlib, io
+    real_oauth, sheets._client = sheets.gspread.oauth, None
+    sheets.gspread.oauth = lambda **kw: print("Please visit this URL") or "gc"
+    out = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(out):
+            assert sheets.client() == "gc"
+    finally:
+        sheets.gspread.oauth, sheets._client = real_oauth, None
+    assert out.getvalue() == "", f"sign-in wrote to stdout: {out.getvalue()!r}"
+
+    # server: newer mcp hides any non-ToolError as a bare "Error executing tool",
+    # so Claude never learns *why* (missing credentials, expired sign-in, bad tab)
+    import server
+    fake(FakeSheet([dash]))
+    try:
+        server.sheets_read("id", "Nope")
+        raise SystemExit("FAIL: bad tab accepted")
+    except server.ToolError as e:
+        assert "Nope" in str(e), e
     print("ok")
 
 

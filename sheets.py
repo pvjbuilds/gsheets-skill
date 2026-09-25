@@ -4,6 +4,9 @@ Auth: gspread's cached OAuth (credentials.json -> browser consent once -> author
 Scope is `spreadsheets` only -- no Drive access, so sheets are addressed by ID, never by name.
 """
 
+import contextlib
+import sys
+
 import gspread
 from gspread.urls import SPREADSHEETS_API_V4_BASE_URL
 from gspread.utils import a1_range_to_grid_range
@@ -16,7 +19,9 @@ _client = None
 def client():
     global _client
     if _client is None:
-        _client = gspread.oauth(scopes=SCOPES)
+        # first run prints a consent URL; under MCP stdout is the protocol stream
+        with contextlib.redirect_stdout(sys.stderr):
+            _client = gspread.oauth(scopes=SCOPES)
     return _client
 
 

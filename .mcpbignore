@@ -1,0 +1,13 @@
+# Only manifest.json, pyproject.toml, server.py, sheets.py ship in the bundle.
+.git/
+.venv/
+__pycache__/
+docs/
+*.md
+*.sh
+*.mcpb
+test_*.py
+apply_*.py
+.DS_Store
+.gitignore
+.mcpbignore

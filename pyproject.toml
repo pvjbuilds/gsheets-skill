@@ -1,0 +1,10 @@
+[project]
+name = "gsheets-mcp"
+version = "1.0.0"
+description = "Read and edit your own Google Sheets from Claude"
+requires-python = ">=3.10"
+dependencies = [
+    "mcp>=2.0,<3",
+    "gspread>=6.2,<7",
+    "google-auth-oauthlib>=1.2",
+]
