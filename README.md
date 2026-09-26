@@ -34,7 +34,7 @@ The skill is the instructions; the library is the hands. You need both, and
 Google credentials.** The short version:
 
 ```bash
-git clone https://github.com/Prygozhyn/gsheets-skill.git
+git clone https://github.com/pvjbuilds/gsheets-skill.git
 cd gsheets-skill
 ./install.sh
 ```
@@ -213,7 +213,7 @@ Tools: `sheets_create`, `sheets_tabs`, `sheets_read`, `sheets_write`, `sheets_ap
 Restart the session to pick it up. The skill works fine without this.
 
 **Claude Desktop, no clone needed:** download `gsheets.mcpb` from the
-[latest release](https://github.com/Prygozhyn/gsheets-skill/releases/latest) and
+[latest release](https://github.com/pvjbuilds/gsheets-skill/releases/latest) and
 double-click it (or drag it onto Claude Desktop). Claude Desktop sets up Python and the
 libraries itself (it's a uv-runtime bundle); if it reports `uv` missing, install
 [uv](https://docs.astral.sh/uv/). You still need your own Google credentials at `~/.config/gspread/credentials.json`

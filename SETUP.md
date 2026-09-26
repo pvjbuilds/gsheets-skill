@@ -15,7 +15,7 @@ a week and the reason is not obvious.
 ## Step 1 — Install the code
 
 ```bash
-git clone https://github.com/Prygozhyn/gsheets-skill.git
+git clone https://github.com/pvjbuilds/gsheets-skill.git
 cd gsheets-skill
 ./install.sh
 ```
